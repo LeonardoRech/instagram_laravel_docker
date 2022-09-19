@@ -1,0 +1,68 @@
+version: '3'
+
+services: 
+  web:
+    restart: always
+    build: .
+    volumes: 
+      - ./:/var/www/
+    depends_on: 
+      - postgres
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:12-alpine
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=sociallux
+    expose:
+      - "5432"
+    volumes:
+      - ./docker/volumes/postgres:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=lux@lux.com
+      - PGADMIN_DEFAULT_PASSWORD="postgres"
+      - PGADMIN_LISTEN_PORT=5050
+    ports:
+      - "5050:5050"
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: always
+    ports:
+      - "8000:80"
+    volumes: 
+      - ./:/var/www
+      - ./docker/nginx:/etc/nginx/conf.d
+    networks:
+      - backend
+    depends_on: 
+      - web
+    healthcheck:
+      test: ["CMD-SHELL", "curl -so /dev/null http://localhost/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+
+
+networks:
+
+  backend:
+    driver: bridge
+    external: false
